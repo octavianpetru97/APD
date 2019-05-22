@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include "md5.h"
+#include "mpi.h"
 
 using namespace std;
 	
@@ -33,7 +34,6 @@ string combinare(const vector<string>& combinare)
 		}
 		index++;
 	}
-	//output <<
 	return output.str();
 }
 
@@ -41,27 +41,27 @@ int main(int argc, char *argv[])
 { 
 
 	int  my_rank;      
-	int  nrprocs;
+	int  nrproces;
 	string cautare;
 	ifstream myReadFile("D:\\Facultate\\andul3\\Semestrul2\\APD-Tavi\\google-10000-english-master\\google-10000-english-no-swears.txt");
 	int offset = 0; 
 	int offset1 = 0;
+	int n = 0;
 	string line;
-	string has1 = "e04b86583a42a056d37aa1dce541542f";
-	//	"be6115fee122da57ec46f2bfa6841053";
-	//;
-	//string	 w[10000];
+	int x , low, high ;
+	string has1 = "be6115fee122da57ec46f2bfa6841053";
+
 	
 	vector <string> w;
 	vector <string> v;
 	bool flag = true; 
-//	string	 v[10000];
 	int str; 
 	vector<string> p;
 	
-	//MPI_Init(&argc, &argv);
+	MPI_Init(&argc, &argv); // start mpi
 	
-
+	MPI_Comm_size(MPI_COMM_WORLD, &nrproces); // cate has-uri cauta fiecare proces 
+	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank); // rangul procesului 
 	while (!myReadFile.eof())
 	{
 
@@ -72,8 +72,7 @@ int main(int argc, char *argv[])
 				w.push_back(line);
 	
 				
-			//w[offset] = line;
-			//offset++;
+
 		}
 		if (line.size() == 15)
 		{
@@ -81,14 +80,32 @@ int main(int argc, char *argv[])
 				v.push_back(line);
 			
 		
-			//v[offset1] = line;
-			//offset1++;
+
 		}
 
 	}
 	myReadFile.close();
 
-	for(int a = 0; a < w.size(); a++ ){
+	MPI_Bcast(w.data(), w.size(), MPI_CHAR, 0, MPI_COMM_WORLD); // trimite vectorul de la root la celalalte procese  
+	
+	
+	if (my_rank < 2)
+	{
+		x = w.size() / nrproces - 1 ; // marimea vectorului / procese adica 4 =  portiune de vector 
+		low = my_rank * x; // rangul procesului 0,1,2,3 * portiunea de vector  = inceputul ariei de cautare 
+		high = low + x; // inceputul ariei + lungimea unei portiuni = finalul ariei de cautat 
+	}
+	n = n + x;
+	if (my_rank > 1)
+	{	
+		n = w.size() / nrproces + 2 + n  ; // marimea vectorului / procese adica 4 =  portiune de vector 
+		low = my_rank * n; // rangul procesului 0,1,2,3 * portiunea de vector  = inceputul ariei de cautare 
+		high = low + n; // inceputul ariei + lungimea unei portiuni = finalul ariei de cautat 
+	}
+//	x = w.size() / nrproces; // marimea vectorului / procese adica 4 =  portiune de vector 
+//	low = my_rank * x; // rangul procesului 0,1,2,3 * portiunea de vector  = inceputul ariei de cautare 
+//	high = low + x; // inceputul ariei + lungimea unei portiuni = finalul ariei de cautat 
+	for (int a = low; a < high; a++) {
 		for(int b = 0 ; b < w.size();b++) {
 			for( int c = 0; c < v.size(); c++)
 			{
@@ -98,7 +115,6 @@ int main(int argc, char *argv[])
 				{
 
 					string combined = combinare({w[a], w[b], v[c]});
-					//	cout << combined;
 					MD5_CTX ctx;
 					stringstream ss; 
 					ss << hex;
@@ -112,15 +128,15 @@ int main(int argc, char *argv[])
 						ss << (int)hash[i];
 					}
 					
-					//cout << w[a] << w[b] << v[c] << combined << " " << ss.str();
+					
 					cout << w[a]  << combined << " " << ss.str();
 					if (has1 == ss.str())
 					{
 						
-						cout << "MERGE"<<endl;
+						cout << "S-a gasit hash-ul"<<endl;
 						
 						flag = false;
-						//break;
+						
 					}
 					
 					cout << "\n";
@@ -139,6 +155,8 @@ int main(int argc, char *argv[])
 		if (flag == false)
 		{
 			break;
+
+
 		}
 
 	}
@@ -149,22 +167,17 @@ int main(int argc, char *argv[])
 	
 
 
-
-	//c_str
-	//string combined = combinare({ "abcd", "efghcb", "si" });
-	
-		//vector<string> threeWords;
-
 		
-	
-
 
 	
 		
+	MPI_Finalize();
 		
 		
-		
-
+	//7714 / 4 = 1928,5
+	// proc 0 ,1 = lungimea lui w ( 7714 ) / 4 - 1 = 1927
+	//proc 2,3 = lungimea lui w (7714 ) / 4 + 2 = 1930 
+	// 1927 ,1927 , 1930 , 1930
 		
  	return 0;
 
